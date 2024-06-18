@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 # Directory containing the CSV files
-directory = os.path.expanduser('~/Downloads/vso_health_checks_python')
+directory = os.path.expanduser('~/Downloads/vso_health_summer_project/vso_health_checks_python')
 
 # Connect to the SQLite database
 conn = sqlite3.connect('check_files.db')
