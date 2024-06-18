@@ -4,6 +4,7 @@ CREATE TABLE data_sources (
     source_name TEXT UNIQUE
 );
 
+
 -- Create a table to store the status records
 CREATE TABLE status_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
