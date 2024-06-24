@@ -10,25 +10,31 @@ directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_chec
 conn = sqlite3.connect('check_files.db')
 cur = conn.cursor()
 
-# Create the check_files table
+# Drop the existing check_files_python table if it exists
+
+
+# Create the check_files_python table with source_name
 cur.execute('''
-CREATE TABLE IF NOT EXISTS check_files_python (
+CREATE TABLE check_files_python (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     provider TEXT NOT NULL,
     source TEXT NOT NULL,
     instrument TEXT NOT NULL,
+    source_name TEXT NOT NULL,
     status INTEGER,
-    check_date DATE
+    check_date DATE,
+    UNIQUE (provider, source, instrument)
 )
 ''')
 
-# Function to insert data into the check_files table from a dataframe
+# Function to insert data into the check_files_python table from a dataframe
 def insert_check_file_data(df, check_date):
     for index, row in df.iterrows():
+        source_name = f"{row['Provider']}-{row['Source']}-{row['Instrument']}"
         cur.execute('''
-            INSERT INTO check_files_python (provider, source, instrument, status, check_date)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (row['Provider'], row['Source'], row['Instrument'], row['Status'], check_date))
+            INSERT OR IGNORE INTO check_files_python (provider, source, instrument, source_name, status, check_date)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (row['Provider'], row['Source'], row['Instrument'], source_name, row['Status'], check_date))
     conn.commit()
 
 # Iterate through all CSV files in the directory and insert their data into the database
