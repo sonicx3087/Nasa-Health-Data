@@ -14,9 +14,9 @@ cur = conn.cursor()
 cur.execute('''
 CREATE TABLE IF NOT EXISTS check_files_python (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    provider TEXT,
-    source TEXT,
-    instrument TEXT,
+    provider TEXT NOT NULL,
+    source TEXT NOT NULL,
+    instrument TEXT NOT NULL,
     status INTEGER,
     check_date DATE
 )
