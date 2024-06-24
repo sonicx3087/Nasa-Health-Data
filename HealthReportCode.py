@@ -1,2 +1,0 @@
-print("dog")
-print("cat")
