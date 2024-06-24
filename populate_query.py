@@ -6,7 +6,7 @@ def query_instruments_with_status(status, start_date, end_date):
     cur = conn.cursor()
     cur.execute('''
         SELECT DISTINCT instrument
-        FROM check_files
+        FROM check_files_python
         WHERE status = ? AND check_date BETWEEN ? AND ?
     ''', (status, start_date, end_date))
     results = cur.fetchall()
