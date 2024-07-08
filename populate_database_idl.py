@@ -11,7 +11,7 @@ conn = sqlite3.connect('check_files.db')
 cur = conn.cursor()
 
 # Drop the existing check_files_idl table if it exists
-cur.execute('DROP TABLE IF EXISTS check_files_idl')
+
 
 # Create the check_files_idl table with the source_name field
 cur.execute('''
