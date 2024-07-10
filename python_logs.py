@@ -7,16 +7,16 @@ from datetime import datetime
 log_directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_logs_python'
 
 # Pattern to match lines containing the word "FAILED"
-failed_pattern = re.compile(r'(FAILED|WARNING)', re.IGNORECASE)
+failed_pattern = re.compile(r'FAILED', re.IGNORECASE)
 
 # Connect to the SQLite database
 conn = sqlite3.connect('check_files.db')
 cur = conn.cursor()
 
-# Drop the existing log_entries_idl table if it exists
+# Drop the existing log_entries_python table if it exists
 
 
-# Create the log_entries_idl table
+# Create the log_entries_python table
 cur.execute('''
 CREATE TABLE log_entries_python (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,10 +49,10 @@ print("Extracted messages:")
 for log_file, log_entry, entry_date in failed_messages:
     print(f"{log_file}: {log_entry} (Date: {entry_date})")
 
-# Insert the extracted messages into the log_entries_idl table
+# Insert the extracted messages into the log_entries_python table
 for log_file, log_entry, entry_date in failed_messages:
     cur.execute('''
-        INSERT INTO log_entries_idl (log_file, log_entry, entry_date)
+        INSERT INTO log_entries_python (log_file, log_entry, entry_date)
         VALUES (?, ?, ?)
     ''', (log_file, log_entry, entry_date))
 
