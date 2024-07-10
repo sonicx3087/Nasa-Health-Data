@@ -11,7 +11,7 @@ conn = sqlite3.connect('check_files.db')
 cur = conn.cursor()
 
 # Drop the existing check_files_python table if it exists
-
+cur.execute('DROP TABLE IF EXISTS check_files_python')
 
 # Create the check_files_python table with source_name
 cur.execute('''
@@ -22,7 +22,7 @@ CREATE TABLE check_files_python (
     instrument TEXT NOT NULL,
     source_name TEXT NOT NULL,
     status INTEGER,
-    check_date DATE,
+    check_date TEXT,
     UNIQUE (provider, source, instrument)
 )
 ''')
@@ -46,7 +46,7 @@ for filename in os.listdir(directory):
             print(f"CSV file loaded successfully: {filename}")
             # Extract date from the filename (assuming the format is consistent)
             date_str = filename.split('_')[3][:8]  # Extract the date part
-            check_date = datetime.strptime(date_str, '%Y%m%d').date()
+            check_date = datetime.strptime(date_str, '%Y%m%d').strftime('%Y%m%d')
             insert_check_file_data(df, check_date)
         except FileNotFoundError:
             print(f"File not found: {file_path}")
