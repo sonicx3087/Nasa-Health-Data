@@ -16,13 +16,14 @@ cur = conn.cursor()
 # Drop the existing log_entries_python table if it exists
 
 
+
 # Create the log_entries_python table
 cur.execute('''
 CREATE TABLE log_entries_python (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     log_file TEXT NOT NULL,
     log_entry TEXT NOT NULL,
-    entry_date DATE
+    entry_date TEXT NOT NULL
 )
 ''')
 
@@ -33,13 +34,21 @@ def parse_log_files(directory):
     for filename in os.listdir(directory):
         if filename.endswith(".log"):
             file_path = os.path.join(directory, filename)
+            date_part = filename.split('_')[2]
+            try:
+                entry_date = datetime.strptime(date_part, '%Y%m%d').strftime('%Y-%m-%d')
+            except ValueError:
+                print(f"Filename {filename} contains an invalid date format.")
+                continue
+
             with open(file_path, 'r') as file:
                 for line in file:
                     if failed_pattern.search(line):
                         print(f"Match found in file {filename}: {line.strip()}")
-                        failed_messages.append((filename, line.strip(), datetime.now().date()))
+                        failed_messages.append((filename, line.strip(), entry_date))
 
     return failed_messages
+
 
 # Parse the log files and get the lines containing "FAILED"
 failed_messages = parse_log_files(log_directory)
