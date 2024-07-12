@@ -10,7 +10,7 @@ log_directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_
 failed_pattern = re.compile(r'FAILED', re.IGNORECASE)
 
 # Connect to the SQLite database
-conn = sqlite3.connect('check_files.db')
+conn = sqlite3.connect('vso_files.db')
 cur = conn.cursor()
 
 # Drop the existing log_entries_python table if it exists
