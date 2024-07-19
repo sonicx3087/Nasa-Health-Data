@@ -13,7 +13,7 @@ conn = sqlite3.connect('vso_files.db')
 query = '''
 SELECT source_name, check_date, status
 FROM check_files_python
-ORDER BY id DESC
+ORDER BY check_date DESC
 LIMIT 30
 '''
 df = pd.read_sql_query(query, conn)
