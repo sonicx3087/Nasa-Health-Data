@@ -2,21 +2,14 @@ import os
 import sqlite3
 import pandas as pd
 from datetime import datetime
-from bokeh.plotting import figure, output_file, save, show
-from bokeh.io.export import export_png
+from bokeh.plotting import figure, output_file, save
 from bokeh.transform import factor_cmap
-from bokeh.models import (ColumnDataSource, Legend, Title)
+from bokeh.models import ColumnDataSource
 from bokeh.palettes import Spectral6
 from html2image import Html2Image
 
-# Directory containing the CSV files
-directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_checks_python'
-
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
-cur = conn.cursor()
-
-# Query the last 30 entries
 query = '''
 SELECT source_name, check_date, status
 FROM check_files_python
@@ -24,18 +17,17 @@ ORDER BY id DESC
 LIMIT 30
 '''
 df = pd.read_sql_query(query, conn)
-
-# Close the connection
 conn.close()
 
 # Prepare the data
 df['check_date'] = pd.to_datetime(df['check_date'])
+df['status_str'] = df['status'].astype(str)  # Convert status to string for color mapping
 df = df.sort_values(by='check_date')
 source = ColumnDataSource(df)
 
 # Create a color mapper
-status_list = df['status'].unique().tolist()
-color_map = factor_cmap('status', palette=Spectral6, factors=status_list)
+status_list = df['status'].astype(str).unique().tolist()  # Convert to string for color mapping
+color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
 
 # Create the figure
 p = figure(
@@ -43,8 +35,8 @@ p = figure(
     x_axis_label='Source Name',
     y_axis_label='Check Date',
     title='Health Check Status Over Time',
-    plot_height=600,
-    plot_width=1200
+    height=600,
+    width=1200
 )
 
 # Add circle glyphs to the plot
@@ -54,7 +46,7 @@ p.circle(
     size=10,
     source=source,
     color=color_map,
-    legend_field='status'
+    legend_field='status_str'
 )
 
 # Customize the plot
