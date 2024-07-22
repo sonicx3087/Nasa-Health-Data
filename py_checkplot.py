@@ -11,25 +11,18 @@ from html2image import Html2Image
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
 
-# Query to get data with 30 distinct check_date values and limit to 30 distinct source_name values
+# Query to get data with 30 distinct check_date values
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date
     FROM check_files_python
     ORDER BY check_date DESC
     LIMIT 30
-),
-DistinctSources AS (
-    SELECT DISTINCT source_name
-    FROM check_files_python
-    ORDER BY source_name
-    LIMIT 30
 )
 SELECT source_name, check_date, status
 FROM check_files_python
 WHERE check_date IN (SELECT check_date FROM DistinctDates)
-AND source_name IN (SELECT source_name FROM DistinctSources)
-ORDER BY check_date, source_name
+ORDER BY check_date
 '''
 
 df = pd.read_sql_query(query, conn)

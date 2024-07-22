@@ -39,14 +39,23 @@ specific_dates = pd.to_datetime(specific_dates)
 
 # Filter data for the specific dates
 filtered_df = df[df['check_date'].isin(specific_dates)]
+print(filtered_df)
 filtered_df['status_str'] = filtered_df['status'].astype(str)
 
 # Prepare data for plotting
 source = ColumnDataSource(filtered_df)
+print(source)
 status_list = filtered_df['status_str'].unique().tolist()
 color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
 
+y_range=list(filtered_df['check_date'].unique())
+print(y_range)
+#x_range=list(reversed(filtered_df['source_name'].unique()))
+#print(x_range)
+
+p = figure(width=1400,height=1500,y_range=list(filtered_df['check_date'].to_pydatetime().unique()), x_range=list(reversed(filtered_df['source_name'].unique())))
 # Create the figure
+'''
 p = figure(
     y_range=filtered_df['source_name'].tolist(),
     x_axis_label='Check Date',
@@ -70,7 +79,7 @@ p.circle(
 # Customize the plot
 p.xaxis.major_label_orientation = 1.2
 p.legend.title = 'Status'
-
+'''
 # Save the plot as HTML
 output_file("health_check_stat.html")
 save(p)
