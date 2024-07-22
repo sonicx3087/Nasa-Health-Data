@@ -12,6 +12,7 @@ from html2image import Html2Image
 conn = sqlite3.connect('vso_files.db')
 
 # Query to get data with 30 distinct check_date values and limit to 30 distinct source_name values
+#I used a subquery to get the distinct dates and sourcename limited by 30
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date

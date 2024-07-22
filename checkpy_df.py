@@ -1,70 +1,77 @@
+import os
 import sqlite3
 import pandas as pd
-from bokeh.io import output_file, show
-from bokeh.models import BasicTicker, ColumnDataSource, PrintfTickFormatter, Legend, ColorBar
-from bokeh.plotting import figure
-from bokeh.transform import factor_cmap
-from bokeh.palettes import Category10
 from datetime import datetime
+from bokeh.plotting import figure, output_file, save, show
+from bokeh.transform import factor_cmap
+from bokeh.models import ColumnDataSource
+from bokeh.palettes import Spectral6
+from html2image import Html2Image
 
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
 
-# Fetch data from the database
+# Query to get data with 30 distinct check_date values
 query = '''
-SELECT provider, source, instrument, check_date, status
+WITH DistinctDates AS (
+    SELECT DISTINCT check_date
+    FROM check_files_python
+    ORDER BY check_date DESC
+    LIMIT 30
+)
+SELECT source_name, check_date, status
 FROM check_files_python
+WHERE check_date IN (SELECT check_date FROM DistinctDates)
+ORDER BY check_date
 '''
 
-df = pd.read_sql(query, conn)
-
-# Close the connection
+df = pd.read_sql_query(query, conn)
 conn.close()
 
-# Convert check_date to datetime format
+print(len(df.index))
+#print(df)
+
+# Prepare the data
 df['check_date'] = pd.to_datetime(df['check_date'])
-
-# Combine provider, source, and instrument into a single column for the y-axis
-df['source_name'] = df['provider'] + '-' + df['source'] + '-' + df['instrument']
-
-# Creating a ColumnDataSource
+df['status_str'] = df['status'].astype(str)  # Convert status to string for color mapping
+df = df.sort_values(by='check_date')
 source = ColumnDataSource(df)
 
-# Define unique statuses and corresponding colors
-unique_statuses = df['status'].unique().astype(str)
-status_colors = Category10[len(unique_statuses)]  # Use a suitable palette for the number of unique statuses
+# Create a color mapper
+status_list = df['status'].astype(str).unique().tolist()  # Convert to string for color mapping
+color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
 
-# Create a Bokeh plot
+# Create the figure
 p = figure(
-    title="Health Check Data",
-    x_axis_label='Check Time',
-    y_axis_label='Provider-Source-Instrument',
     x_axis_type='datetime',
-    width=800,
-    height=600
+    x_axis_label='Check Date',
+    y_range=sorted(df['source_name'].unique().tolist()),  # Unique and sorted source names
+    y_axis_label='Source Name',
+    title='Health Check Status Over Time',
+    height=4000,
+    width=1200
 )
 
-# Add circles for the data 
+# Add circle glyphs to the plot
 p.circle(
     x='check_date',
     y='source_name',
     size=10,
     source=source,
-    legend_field='status',
-    color=factor_cmap('status', palette=status_colors, factors=unique_statuses)
+    color=color_map,
+    legend_field='status_str'
 )
 
-# Configure x-axis to have intervals of 30 days
-p.xaxis.ticker = BasicTicker(desired_num_ticks=int((df['check_date'].max() - df['check_date'].min()).days / 30))
-p.xaxis.formatter = PrintfTickFormatter(format="%Y-%m-%d")
+# Customize the plot
+p.yaxis.major_label_orientation = 1.2
+p.legend.title = 'Status'
 
-# Add title and other layout properties
-p.title.align = "center"
-p.title.text_font_size = "20px"
-p.legend.orientation = "horizontal"
-p.legend.location = "top_center"
-p.legend.title = "Status"
+# Save the plot as HTML
+output_file("health_check_status.html")
+save(p)
 
-# Show the plot
-output_file("health_check_plot.html")
+# Convert the HTML file to PNG using html2image
+hti = Html2Image()
+hti.screenshot(html_file='health_check_status.html', save_as='health_check_status.png')
+
 show(p)
