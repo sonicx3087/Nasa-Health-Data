@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 from bokeh.plotting import figure, output_file, save, show
 from bokeh.transform import factor_cmap
-
+from bokeh.models import HoverTool
 from bokeh.palettes import Spectral6
 from html2image import Html2Image
 
@@ -12,7 +12,6 @@ from html2image import Html2Image
 conn = sqlite3.connect('vso_files.db')
 
 # Query to get data with 30 distinct check_date values
-#Remove the limit 30 to get all the check_dates
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date
@@ -48,13 +47,14 @@ p = figure(
     x_axis_label='Check Date',
     y_range=sorted(df['source_name'].unique().tolist()),  # Unique and sorted source names
     y_axis_label='Source Name',
-    title='Health Check Status Over Time',
+    title='Python Health Check Status Over Time',
     height=4000,
-    width=1200
+    width=1200,
+    tools="pan,wheel_zoom,box_zoom,reset"
 )
 
 # Add circle glyphs to the plot
-p.circle(
+circle = p.circle(
     x='check_date',
     y='source_name',
     size=10,
@@ -63,16 +63,33 @@ p.circle(
     legend_field='status_str'
 )
 
+# Add HoverTool to display information on hover
+hover = HoverTool(
+    tooltips=[
+        ("Date", "@check_date{%F}"),
+        ("Instrument", "@source_name"),
+        ("Status", "@status")
+    ],
+    formatters={
+        '@check_date': 'datetime'
+    },
+    mode='mouse'
+)
+
+p.add_tools(hover)
+
 # Customize the plot
 p.yaxis.major_label_orientation = 0
 p.legend.title = 'Status'
 
 # Save the plot as HTML
-output_file("health_check_status.html")
+output_file("py_health_check_status.html")
 save(p)
 
 # Convert the HTML file to PNG using html2image
 hti = Html2Image()
-hti.screenshot(html_file='health_check_status.html', save_as='health_check_status.png')
+hti.screenshot(html_file='py_health_check_status.html', save_as='py_health_check_status.png')
 
+
+# Show the plot
 show(p)
