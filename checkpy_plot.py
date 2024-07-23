@@ -4,7 +4,7 @@ import pandas as pd
 from datetime import datetime
 from bokeh.plotting import figure, output_file, save, show
 from bokeh.transform import factor_cmap
-from bokeh.models import ColumnDataSource
+
 from bokeh.palettes import Spectral6
 from html2image import Html2Image
 
@@ -12,6 +12,7 @@ from html2image import Html2Image
 conn = sqlite3.connect('vso_files.db')
 
 # Query to get data with 30 distinct check_date values
+#Remove the limit 30 to get all the check_dates
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date
@@ -35,7 +36,7 @@ print(len(df.index))
 df['check_date'] = pd.to_datetime(df['check_date'])
 df['status_str'] = df['status'].astype(str)  # Convert status to string for color mapping
 df = df.sort_values(by='check_date')
-source = ColumnDataSource(df)
+source = (df)
 
 # Create a color mapper
 status_list = df['status'].astype(str).unique().tolist()  # Convert to string for color mapping
@@ -63,7 +64,7 @@ p.circle(
 )
 
 # Customize the plot
-p.yaxis.major_label_orientation = 1.2
+p.yaxis.major_label_orientation = 0
 p.legend.title = 'Status'
 
 # Save the plot as HTML
