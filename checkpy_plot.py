@@ -12,12 +12,15 @@ from html2image import Html2Image
 conn = sqlite3.connect('vso_files.db')
 
 # Query to get data with 30 distinct check_date values
+#Remove the limit by 30 in order to get more dates. You probably will have to make the graph bigger
+#the check_date starts from descending order so the latest date comes first
+
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date
     FROM check_files_python
     ORDER BY check_date DESC
-    LIMIT 30
+    LIMIT 30 
 )
 SELECT source_name, check_date, status
 FROM check_files_python
