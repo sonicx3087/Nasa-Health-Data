@@ -96,3 +96,5 @@ hti.screenshot(html_file='py_health_check_status.html', save_as='py_health_check
 
 # Show the plot
 show(p)
+
+

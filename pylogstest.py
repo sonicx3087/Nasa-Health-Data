@@ -8,7 +8,7 @@ log_directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_
 
 # Pattern to match lines containing the word "FAILED" or warning messages
 error_warning_pattern = re.compile(r'(FAILED|WARNING|ERROR).*', re.IGNORECASE)
-source_name_pattern = re.compile(r'Query: (\w+) \| (\w+) \| (\w+)', re.IGNORECASE)
+source_name_pattern = re.compile(r'(\w+) \| (\w+) \| (\w+)', re.IGNORECASE)
 
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
@@ -51,7 +51,6 @@ def parse_log_files(directory):
                             provider, source, instrument = source_match.groups()
                             source_name = f"{provider}-{source}-{instrument}"
                             error_message = line.strip()
-                            print(f"Match found in file {filename}: {line.strip()}")
                             failed_messages.append((filename, line.strip(), entry_date, source_name, error_message))
 
     return failed_messages
@@ -71,3 +70,4 @@ conn.commit()
 conn.close()
 
 print("Log entries inserted successfully.")
+
