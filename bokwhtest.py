@@ -1,4 +1,3 @@
-
 import os
 import re
 import sqlite3
@@ -8,6 +7,7 @@ from bokeh.plotting import figure, output_file, save, show
 from bokeh.transform import factor_cmap
 from bokeh.models import HoverTool
 from bokeh.palettes import Spectral6
+from textwrap import wrap
 
 # Directory containing the log files
 log_directory = '/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_logs_python'
@@ -87,6 +87,12 @@ conn.close()
 # Prepare the data for Bokeh
 df['check_date'] = pd.to_datetime(df['check_date'])
 df['status_str'] = df['status'].astype(str)
+
+# Wrap the error_message to 13 characters per line and replace newlines with <br> for HTML
+df['error_message'] = df['error_message'].apply(
+    lambda x: "<br>".join(wrap(x, 40)) if pd.notnull(x) else ''
+)
+
 source = df
 
 # Create a color mapper
@@ -121,7 +127,7 @@ hover = HoverTool(
         ("Date", "@check_date{%F}"),
         ("Source Name", "@source_name"),
         ("Status", "@status"),
-        ("Message", "@error_message")
+        ("Message", "@error_message{safe}")  # Use {safe} to render HTML
     ],
     formatters={
         '@check_date': 'datetime'
