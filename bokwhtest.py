@@ -1,7 +1,7 @@
+
 import os
 import re
 import sqlite3
-from textwrap import wrap
 from datetime import datetime
 import pandas as pd
 from bokeh.plotting import figure, output_file, save, show
@@ -89,8 +89,6 @@ df['check_date'] = pd.to_datetime(df['check_date'])
 df['status_str'] = df['status'].astype(str)
 source = df
 
-df['error_message'] =df['error_message'].apply(lambda x: "\n".join(wrap(x, 13)))
-
 # Create a color mapper
 status_list = df['status_str'].unique().tolist()
 color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
@@ -123,8 +121,7 @@ hover = HoverTool(
         ("Date", "@check_date{%F}"),
         ("Source Name", "@source_name"),
         ("Status", "@status"),
-        ("Error Message", "@error_message")
-        #"\n".join(textwrap.wrap(str,8)))
+        ("Message", "@error_message")
     ],
     formatters={
         '@check_date': 'datetime'
