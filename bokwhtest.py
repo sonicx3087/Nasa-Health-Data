@@ -60,6 +60,7 @@ def parse_log_files(directory):
 parse_log_files(log_directory)
 conn.commit()
 
+
 # Query to get data for the Bokeh plot
 query = '''
 WITH DistinctDates AS (
@@ -72,38 +73,37 @@ SELECT
     c.source_name,
     c.check_date,
     c.status,
-    GROUP_CONCAT(l.error_message, '\n') as error_message
+    l.error_message
 FROM check_files_python c
 LEFT JOIN log_entries_python l
 ON c.source_name = l.source_name AND c.check_date = l.entry_date
 WHERE c.check_date IN (SELECT check_date FROM DistinctDates)
-GROUP BY c.source_name, c.check_date, c.status
 ORDER BY c.check_date
 '''
 
 df = pd.read_sql_query(query, conn)
 conn.close()
 
+# Group by 'source_name', 'check_date', and 'status', then concatenate unique error messages
+df_grouped = df.groupby(['source_name', 'check_date', 'status'])['error_message'].apply(
+    lambda x: "<br>".join(wrap("\n".join(x.dropna().unique()), 40))
+).reset_index()
+
 # Prepare the data for Bokeh
-df['check_date'] = pd.to_datetime(df['check_date'])
-df['status_str'] = df['status'].astype(str)
+df_grouped['check_date'] = pd.to_datetime(df_grouped['check_date'])
+df_grouped['status_str'] = df_grouped['status'].astype(str)
 
-# Wrap the error_message to 13 characters per line and replace newlines with <br> for HTML
-df['error_message'] = df['error_message'].apply(
-    lambda x: "<br>".join(wrap(x, 40)) if pd.notnull(x) else ''
-)
-
-source = df
+source = df_grouped
 
 # Create a color mapper
-status_list = df['status_str'].unique().tolist()
+status_list = df_grouped['status_str'].unique().tolist()
 color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
 
 # Create the figure
 p = figure(
     x_axis_type='datetime',
     x_axis_label='Check Date',
-    y_range=sorted(df['source_name'].unique().tolist()),
+    y_range=sorted(df_grouped['source_name'].unique().tolist()),
     y_axis_label='Source Name',
     title='Python Health Check Status Over Time',
     height=4000,
