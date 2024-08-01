@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 from bokeh.plotting import figure, output_file, save, show
 from bokeh.transform import factor_cmap
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, ColumnDataSource
 from bokeh.palettes import Spectral6
 from textwrap import wrap
 
@@ -14,7 +14,7 @@ log_directory = '/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_l
 
 # Patterns to match lines containing error/warning messages and source name
 error_warning_pattern = re.compile(r'(FAILED|WARNING|ERROR).*', re.IGNORECASE)
-source_name_pattern = re.compile(r'Query: (\w+) \| (\w+) \| (\w+)', re.IGNORECASE)
+source_name_pattern = re.compile(r'Query:\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*between', re.IGNORECASE)
 
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
@@ -49,7 +49,7 @@ def parse_log_files(directory):
                     source_match = source_name_pattern.search(line)
                     if source_match:
                         provider, source, instrument = source_match.groups()
-                        source_name = f"{provider}-{source}-{instrument}"
+                        source_name = f"{provider.strip()}-{source.strip()}-{instrument.strip()}"
                         error_message = line.strip()
                         cur.execute('''
                             INSERT INTO log_entries_python (log_file, log_entry, entry_date, source_name, error_message)
@@ -59,7 +59,6 @@ def parse_log_files(directory):
 # Parse the log files and insert the data
 parse_log_files(log_directory)
 conn.commit()
-
 
 # Query to get data for the Bokeh plot
 query = '''
@@ -89,11 +88,19 @@ df_grouped = df.groupby(['source_name', 'check_date', 'status'])['error_message'
     lambda x: "<br>".join(wrap("\n".join(x.dropna().unique()), 40))
 ).reset_index()
 
+# Add custom tooltip messages based on status
+def get_tooltip_message(status, error_message):
+    if status == 2:
+        return "Status is 2 which means it's skipped and therefore no message"
+    return error_message
+
+df_grouped['tooltip_message'] = df_grouped.apply(lambda row: get_tooltip_message(row['status'], row['error_message']), axis=1)
+
 # Prepare the data for Bokeh
 df_grouped['check_date'] = pd.to_datetime(df_grouped['check_date'])
 df_grouped['status_str'] = df_grouped['status'].astype(str)
 
-source = df_grouped
+source = ColumnDataSource(df_grouped)
 
 # Create a color mapper
 status_list = df_grouped['status_str'].unique().tolist()
@@ -121,14 +128,16 @@ circle = p.circle(
     legend_field='status_str'
 )
 
-# Add HoverTool to display information on hover
+# Add HoverTool with custom tooltips
 hover = HoverTool(
-    tooltips=[
-        ("Date", "@check_date{%F}"),
-        ("Source Name", "@source_name"),
-        ("Status", "@status"),
-        ("Message", "@error_message{safe}")  # Use {safe} to render HTML
-    ],
+    tooltips="""
+        <div>
+            <div><strong>Date:</strong> @check_date{%F}</div>
+            <div><strong>Source Name:</strong> @source_name</div>
+            <div><strong>Status:</strong> @status</div>
+            <div><strong>Message:</strong> @tooltip_message</div>
+        </div>
+    """,
     formatters={
         '@check_date': 'datetime'
     },
