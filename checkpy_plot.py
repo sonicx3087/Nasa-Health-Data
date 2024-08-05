@@ -1,54 +1,130 @@
 import os
+import re
 import sqlite3
-import pandas as pd
 from datetime import datetime
+import pandas as pd
 from bokeh.plotting import figure, output_file, save, show
 from bokeh.transform import factor_cmap
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, ColumnDataSource
 from bokeh.palettes import Spectral6
-from html2image import Html2Image
+from textwrap import wrap
+from bokeh.models import Legend, LegendItem
+
+
+# Directory containing the log files
+log_directory = '/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_logs_python'
+
+# Patterns to match lines containing error/warning messages and source name
+error_warning_pattern = re.compile(r'(FAILED|WARNING|ERROR).*', re.IGNORECASE)
+source_name_pattern = re.compile(r'Query:\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*between', re.IGNORECASE)
 
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
+cur = conn.cursor()
 
-# Query to get data with 30 distinct check_date values
-#Remove the limit by 30 in order to get more dates. You probably will have to make the graph bigger
-#the check_date starts from descending order so the latest date comes first
+# Create or replace the log_entries_python table
+cur.execute('''
+CREATE TABLE IF NOT EXISTS log_entries_python (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    log_file TEXT NOT NULL,
+    log_entry TEXT NOT NULL,
+    entry_date TEXT NOT NULL,
+    source_name TEXT,
+    error_message TEXT
+)
+''')
 
+# Function to parse log files and insert into the database
+def parse_log_files(directory):
+    for filename in os.listdir(directory):
+        if filename.endswith(".log"):
+            file_path = os.path.join(directory, filename)
+            date_part = filename.split('_')[2]  # Extract date from filename
+            try:
+                entry_date = datetime.strptime(date_part, '%Y%m%d').strftime('%Y-%m-%d')
+            except ValueError:
+                print(f"Filename {filename} contains an invalid date format.")
+                continue
+
+            with open(file_path, 'r') as file:
+                for line in file:
+                    source_match = source_name_pattern.search(line)
+                    if source_match:
+                        provider, source, instrument = source_match.groups()
+                        source_name = f"{provider.strip()}-{source.strip()}-{instrument.strip()}"
+                        error_message = line.strip()
+                        cur.execute('''
+                            INSERT INTO log_entries_python (log_file, log_entry, entry_date, source_name, error_message)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (filename, line.strip(), entry_date, source_name, error_message))
+
+# Parse the log files and insert the data
+parse_log_files(log_directory)
+conn.commit()
+
+# Query to get data for the Bokeh plot
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date
     FROM check_files_python
     ORDER BY check_date DESC
-    LIMIT 30 
+    LIMIT 30
 )
-SELECT source_name, check_date, status
-FROM check_files_python
-WHERE check_date IN (SELECT check_date FROM DistinctDates)
-ORDER BY check_date
+SELECT
+    c.source_name,
+    c.check_date,
+    c.status,
+    l.error_message
+FROM check_files_python c
+LEFT JOIN log_entries_python l
+ON c.source_name = l.source_name AND c.check_date = l.entry_date
+WHERE c.check_date IN (SELECT check_date FROM DistinctDates)
+ORDER BY c.check_date
 '''
 
 df = pd.read_sql_query(query, conn)
 conn.close()
 
-print(len(df.index))
-#print(df)
+# Group by 'source_name', 'check_date', and 'status', then concatenate unique error messages
+df_grouped = df.groupby(['source_name', 'check_date', 'status'])['error_message'].apply(
+    lambda x: "<br>".join(wrap("\n".join(x.dropna().unique()), 40))
+).reset_index()
 
-# Prepare the data
-df['check_date'] = pd.to_datetime(df['check_date'])
-df['status_str'] = df['status'].astype(str)  # Convert status to string for color mapping
-df = df.sort_values(by='check_date')
-source = (df)
+# Add custom tooltip messages based on status
+def get_tooltip_message(status, error_message):
+    if status == 2:
+        return "Status is 2 which means it's skipped and therefore no message"
+    return error_message
+
+df_grouped['tooltip_message'] = df_grouped.apply(lambda row: get_tooltip_message(row['status'], row['error_message']), axis=1)
+
+# Prepare the data for Bokeh
+df_grouped['check_date'] = pd.to_datetime(df_grouped['check_date'])
+df_grouped['status_str'] = df_grouped['status'].astype(str)
+
+
 
 # Create a color mapper
-status_list = df['status'].astype(str).unique().tolist()  # Convert to string for color mapping
-color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
+status_list = df_grouped['status_str'].unique().tolist()
+
+color_map = {
+    '1': 'green',  # Pass or known query
+    '0': '#32CD32',   # Pass
+    '9': 'red',    # Fail no response (no data)
+    '8': 'orange', # Fail on download
+    '2': 'yellow'    # Skipped
+}
+
+# Prepare the data for Bokeh
+df_grouped['color'] = df_grouped['status_str'].map(color_map)
+
+source = ColumnDataSource(df_grouped)
 
 # Create the figure
 p = figure(
     x_axis_type='datetime',
     x_axis_label='Check Date',
-    y_range=sorted(df['source_name'].unique().tolist()),  # Unique and sorted source names
+    y_range=sorted(df_grouped['source_name'].unique().tolist(), reverse=True), #Reverse= True puts tge Y axis in alphabetical Order, may have to remove it when you run it
     y_axis_label='Source Name',
     title='Python Health Check Status Over Time',
     height=4000,
@@ -62,17 +138,20 @@ circle = p.circle(
     y='source_name',
     size=10,
     source=source,
-    color=color_map,
+    color='color',
     legend_field='status_str'
 )
 
-# Add HoverTool to display information on hover
+# Add HoverTool with custom tooltips
 hover = HoverTool(
-    tooltips=[
-        ("Date", "@check_date{%F}"),
-        ("Instrument", "@source_name"),
-        ("Status", "@status")
-    ],
+    tooltips="""
+        <div>
+            <div><strong>Date:</strong> @check_date{%F}</div>
+            <div><strong>Source Name:</strong> @source_name</div>
+            <div><strong>Status:</strong> @status</div>
+            <div><strong>Message:</strong> @tooltip_message</div>
+        </div>
+    """,
     formatters={
         '@check_date': 'datetime'
     },
@@ -85,16 +164,19 @@ p.add_tools(hover)
 p.yaxis.major_label_orientation = 0
 p.legend.title = 'Status'
 
-# Save the plot as HTML
+# Create custom legend items
+legend_items = [
+    LegendItem(label='1 (Pass or known query)', renderers=[circle], index=status_list.index('1')),
+    LegendItem(label='0 (Pass)', renderers=[circle], index=status_list.index('0')),
+    LegendItem(label='9 (Fail no response)', renderers=[circle], index=status_list.index('9')),
+    LegendItem(label='8 (Fail on download)', renderers=[circle], index=status_list.index('8')),
+    LegendItem(label='2 (Skipped)', renderers=[circle], index=status_list.index('2'))
+]
+
+legend = Legend(items=legend_items, location='center')
+p.add_layout(legend, 'right')
+
+# Save the plot as HTML and display it
 output_file("py_health_check_status.html")
 save(p)
-
-# Convert the HTML file to PNG using html2image
-hti = Html2Image()
-hti.screenshot(html_file='py_health_check_status.html', save_as='py_health_check_status.png')
-
-
-# Show the plot
 show(p)
-
-
