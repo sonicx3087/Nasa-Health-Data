@@ -8,7 +8,9 @@ from bokeh.transform import factor_cmap
 from bokeh.models import HoverTool, ColumnDataSource
 from bokeh.palettes import Spectral6
 from textwrap import wrap
-#I
+from bokeh.models import Legend, LegendItem
+
+
 # Directory containing the log files
 log_directory = '/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_logs_python'
 
@@ -100,17 +102,29 @@ df_grouped['tooltip_message'] = df_grouped.apply(lambda row: get_tooltip_message
 df_grouped['check_date'] = pd.to_datetime(df_grouped['check_date'])
 df_grouped['status_str'] = df_grouped['status'].astype(str)
 
-source = ColumnDataSource(df_grouped)
+
 
 # Create a color mapper
 status_list = df_grouped['status_str'].unique().tolist()
-color_map = factor_cmap('status_str', palette=Spectral6, factors=status_list)
+
+color_map = {
+    '1': 'green',  # Pass or known query
+    '0': '#32CD32',   # Pass
+    '9': 'red',    # Fail no response (no data)
+    '8': 'orange', # Fail on download
+    '2': 'yellow'    # Skipped
+}
+
+# Prepare the data for Bokeh
+df_grouped['color'] = df_grouped['status_str'].map(color_map)
+
+source = ColumnDataSource(df_grouped)
 
 # Create the figure
 p = figure(
     x_axis_type='datetime',
     x_axis_label='Check Date',
-    y_range=sorted(df_grouped['source_name'].unique().tolist()),
+    y_range=sorted(df_grouped['source_name'].unique().tolist(), reverse=True), #Reverse= True puts tge Y axis in alphabetical Order, may have to remove it when you run it
     y_axis_label='Source Name',
     title='Python Health Check Status Over Time',
     height=4000,
@@ -124,7 +138,7 @@ circle = p.circle(
     y='source_name',
     size=10,
     source=source,
-    color=color_map,
+    color='color',
     legend_field='status_str'
 )
 
@@ -149,6 +163,18 @@ p.add_tools(hover)
 # Customize the plot
 p.yaxis.major_label_orientation = 0
 p.legend.title = 'Status'
+
+# Create custom legend items
+legend_items = [
+    LegendItem(label='1 (Pass or known query)', renderers=[circle], index=status_list.index('1')),
+    LegendItem(label='0 (Pass)', renderers=[circle], index=status_list.index('0')),
+    LegendItem(label='9 (Fail no response)', renderers=[circle], index=status_list.index('9')),
+    LegendItem(label='8 (Fail on download)', renderers=[circle], index=status_list.index('8')),
+    LegendItem(label='2 (Skipped)', renderers=[circle], index=status_list.index('2'))
+]
+
+legend = Legend(items=legend_items, location='center')
+p.add_layout(legend, 'right')
 
 # Save the plot as HTML and display it
 output_file("py_health_check_status.html")
