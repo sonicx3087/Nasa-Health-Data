@@ -1,3 +1,4 @@
+
 import os
 import re
 import sqlite3
@@ -9,11 +10,8 @@ log_directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_
 # Pattern to match lines containing the word "FAILED"
 failed_pattern = re.compile(r'FAILED', re.IGNORECASE)
 
-# Pattern to match lines containing the word "Query:"
-query_pattern = re.compile(r'Query: ([\w,-]+)')
-
-# Pattern to extract source_name from the line
-source_pattern = re.compile(r'for: (.*),\s*\d{1,2}-\w{3}-\d{4}')
+# Pattern to extract source_name from the line, excluding the trailing date and time
+source_pattern = re.compile(r'for: (.*), \d{1,2}-\w{3}-\d{4}')
 
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
@@ -29,15 +27,13 @@ CREATE TABLE log_entries_idl (
     log_file TEXT NOT NULL,
     log_entry TEXT NOT NULL,
     entry_date TEXT NOT NULL,
-    source_name TEXT,
-    error_message TEXT
-    
+    source_name TEXT
 )
 ''')
 
-# Function to parse log files and extract lines containing "FAILED" or "Query:"
+# Function to parse log files and extract lines containing "FAILED"
 def parse_log_files(directory):
-    log_entries = []
+    failed_messages = []
 
     for filename in os.listdir(directory):
         if filename.endswith(".log"):
@@ -52,27 +48,27 @@ def parse_log_files(directory):
 
             with open(file_path, 'r') as file:
                 for line in file:
-                    if failed_pattern.search(line) or query_pattern.search(line):
+                    if failed_pattern.search(line):
                         source_name = None
                         source_match = source_pattern.search(line)
                         if source_match:
-                            source_name = source_match.group(1)
+                            source_name = source_match.group(1).rsplit(',', 1)[0].strip()
                        
                         print(f"Match found in file {filename}: {line.strip()}")
-                        log_entries.append((filename, line.strip(), entry_date, source_name))
+                        failed_messages.append((filename, line.strip(), entry_date, source_name))
 
-    return log_entries
+    return failed_messages
 
-# Parse the log files and get the lines containing "FAILED" or "Query:"
-log_entries = parse_log_files(log_directory)
+# Parse the log files and get the lines containing "FAILED"
+failed_messages = parse_log_files(log_directory)
 
 # Debugging: Print the extracted messages
 print("Extracted messages:")
-for log_file, log_entry, entry_date, source_name in log_entries:
+for log_file, log_entry, entry_date, source_name in failed_messages:
     print(f"{log_file}: {log_entry} (Date: {entry_date}, Source: {source_name})")
 
 # Insert the extracted messages into the log_entries_idl table
-for log_file, log_entry, entry_date, source_name in log_entries:
+for log_file, log_entry, entry_date, source_name in failed_messages:
     cur.execute('''
         INSERT INTO log_entries_idl (log_file, log_entry, entry_date, source_name)
         VALUES (?, ?, ?, ?)
@@ -83,3 +79,4 @@ conn.commit()
 conn.close()
 
 print("Log entries inserted successfully.")
+

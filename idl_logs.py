@@ -1,3 +1,4 @@
+
 import os
 import re
 import sqlite3
@@ -9,13 +10,15 @@ log_directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_
 # Pattern to match lines containing the word "FAILED"
 failed_pattern = re.compile(r'FAILED', re.IGNORECASE)
 
+# Pattern to extract source_name from the line, excluding the trailing date and time
+source_pattern = re.compile(r'for: (.*), \d{1,2}-\w{3}-\d{4}')
+
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
 cur = conn.cursor()
 
 # Drop the existing log_entries_idl table if it exists
-
-#cur.execute('DROP TABLE IF EXISTS log_entries_idl')
+cur.execute('DROP TABLE IF EXISTS log_entries_idl')
 
 # Create the log_entries_idl table
 cur.execute('''
@@ -23,7 +26,8 @@ CREATE TABLE log_entries_idl (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     log_file TEXT NOT NULL,
     log_entry TEXT NOT NULL,
-    entry_date TEXT NOT NULL
+    entry_date TEXT NOT NULL,
+    source_name TEXT
 )
 ''')
 
@@ -45,8 +49,13 @@ def parse_log_files(directory):
             with open(file_path, 'r') as file:
                 for line in file:
                     if failed_pattern.search(line):
+                        source_name = None
+                        source_match = source_pattern.search(line)
+                        if source_match:
+                            source_name = source_match.group(1).rsplit(',', 1)[0].strip()
+                       
                         print(f"Match found in file {filename}: {line.strip()}")
-                        failed_messages.append((filename, line.strip(), entry_date))
+                        failed_messages.append((filename, line.strip(), entry_date, source_name))
 
     return failed_messages
 
@@ -55,18 +64,19 @@ failed_messages = parse_log_files(log_directory)
 
 # Debugging: Print the extracted messages
 print("Extracted messages:")
-for log_file, log_entry, entry_date in failed_messages:
-    print(f"{log_file}: {log_entry} (Date: {entry_date})")
+for log_file, log_entry, entry_date, source_name in failed_messages:
+    print(f"{log_file}: {log_entry} (Date: {entry_date}, Source: {source_name})")
 
 # Insert the extracted messages into the log_entries_idl table
-for log_file, log_entry, entry_date in failed_messages:
+for log_file, log_entry, entry_date, source_name in failed_messages:
     cur.execute('''
-        INSERT INTO log_entries_idl (log_file, log_entry, entry_date)
-        VALUES (?, ?, ?)
-    ''', (log_file, log_entry, entry_date))
+        INSERT INTO log_entries_idl (log_file, log_entry, entry_date, source_name)
+        VALUES (?, ?, ?, ?)
+    ''', (log_file, log_entry, entry_date, source_name))
 
 # Commit the changes and close the database connection
 conn.commit()
 conn.close()
 
 print("Log entries inserted successfully.")
+
