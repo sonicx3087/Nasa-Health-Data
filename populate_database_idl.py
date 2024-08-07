@@ -16,6 +16,8 @@ cur = conn.cursor()
 
 
 
+# Drop the existing log_entries_idl table if it exists
+#cur.execute('DROP TABLE IF EXISTS check_files_idl')
 
 # Create the check_files_idl table with source_name
 cur.execute('''
