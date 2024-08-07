@@ -29,7 +29,9 @@ CREATE TABLE log_entries_idl (
     log_file TEXT NOT NULL,
     log_entry TEXT NOT NULL,
     entry_date TEXT NOT NULL,
-    source_name TEXT
+    source_name TEXT,
+    error_message TEXT
+    
 )
 ''')
 
