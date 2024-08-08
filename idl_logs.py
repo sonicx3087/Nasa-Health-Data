@@ -1,4 +1,3 @@
-
 import os
 import re
 import sqlite3
@@ -18,7 +17,7 @@ conn = sqlite3.connect('vso_files.db')
 cur = conn.cursor()
 
 # Drop the existing log_entries_idl table if it exists
-#cur.execute('DROP TABLE IF EXISTS log_entries_idl')
+cur.execute('DROP TABLE IF EXISTS log_entries_idl')
 
 # Create the log_entries_idl table
 cur.execute('''
@@ -27,7 +26,8 @@ CREATE TABLE log_entries_idl (
     log_file TEXT NOT NULL,
     log_entry TEXT NOT NULL,
     entry_date TEXT NOT NULL,
-    source_name TEXT
+    source_name TEXT,
+    message TEXT
 )
 ''')
 
@@ -53,9 +53,9 @@ def parse_log_files(directory):
                         source_match = source_pattern.search(line)
                         if source_match:
                             source_name = source_match.group(1).rsplit(',', 1)[0].strip()
-                       
-                        print(f"Match found in file {filename}: {line.strip()}")
-                        failed_messages.append((filename, line.strip(), entry_date, source_name))
+                        message = line.strip()
+                        print(f"Match found in file {filename}: {message}")
+                        failed_messages.append((filename, line.strip(), entry_date, source_name, message))
 
     return failed_messages
 
@@ -64,19 +64,18 @@ failed_messages = parse_log_files(log_directory)
 
 # Debugging: Print the extracted messages
 print("Extracted messages:")
-for log_file, log_entry, entry_date, source_name in failed_messages:
-    print(f"{log_file}: {log_entry} (Date: {entry_date}, Source: {source_name})")
+for log_file, log_entry, entry_date, source_name, message in failed_messages:
+    print(f"{log_file}: {log_entry} (Date: {entry_date}, Source: {source_name}, Message: {message})")
 
 # Insert the extracted messages into the log_entries_idl table
-for log_file, log_entry, entry_date, source_name in failed_messages:
+for log_file, log_entry, entry_date, source_name, message in failed_messages:
     cur.execute('''
-        INSERT INTO log_entries_idl (log_file, log_entry, entry_date, source_name)
-        VALUES (?, ?, ?, ?)
-    ''', (log_file, log_entry, entry_date, source_name))
+        INSERT INTO log_entries_idl (log_file, log_entry, entry_date, source_name, message)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (log_file, log_entry, entry_date, source_name, message))
 
 # Commit the changes and close the database connection
 conn.commit()
 conn.close()
 
 print("Log entries inserted successfully.")
-
