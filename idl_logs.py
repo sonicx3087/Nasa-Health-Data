@@ -17,7 +17,7 @@ conn = sqlite3.connect('vso_files.db')
 cur = conn.cursor()
 
 # Drop the existing log_entries_idl table if it exists
-cur.execute('DROP TABLE IF EXISTS log_entries_idl')
+#cur.execute('DROP TABLE IF EXISTS log_entries_idl')
 
 # Create the log_entries_idl table
 cur.execute('''
