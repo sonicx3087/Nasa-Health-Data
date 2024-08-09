@@ -16,7 +16,8 @@ log_directory = '/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_l
 
 # Patterns to match lines containing error/warning messages and source name
 error_warning_pattern = re.compile(r'(FAILED|WARNING|ERROR).*', re.IGNORECASE)
-source_name_pattern = re.compile(r'Query:\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*between', re.IGNORECASE)
+source_name_pattern = re.compile(r'Query:\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*\|\s*([^\|]+?)\s*between', re.IGNORECASE) #looks for source_names between Query: and between. Not all source_names were seperated by 3 commAS 
+#Some had dashes and underscores
 
 # Connect to the SQLite database
 conn = sqlite3.connect('vso_files.db')
@@ -63,6 +64,7 @@ parse_log_files(log_directory)
 conn.commit()
 
 # Query to get data for the Bokeh plot
+#Want to see nore or less dates remove the limit. Or increase the numbers
 query = '''
 WITH DistinctDates AS (
     SELECT DISTINCT check_date

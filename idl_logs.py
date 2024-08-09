@@ -5,6 +5,7 @@ from datetime import datetime
 
 # Directory containing the log files
 log_directory = r'/Users/dokigbo/Downloads/vso_health_summer_project/vso_health_logs_idl'
+#Change directory to yours
 
 # Pattern to match lines containing the word "FAILED"
 failed_pattern = re.compile(r'FAILED', re.IGNORECASE)
@@ -17,6 +18,7 @@ conn = sqlite3.connect('vso_files.db')
 cur = conn.cursor()
 
 # Drop the existing log_entries_idl table if it exists
+
 #cur.execute('DROP TABLE IF EXISTS log_entries_idl')
 
 # Create the log_entries_idl table

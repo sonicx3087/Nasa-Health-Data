@@ -1,3 +1,4 @@
+#This is an expriment please ignore.
 import os
 import sqlite3
 import pandas as pd
@@ -83,12 +84,12 @@ p.yaxis.major_label_orientation = 0
 p.legend.title = 'Status'
 
 # Save the plot as HTML
-output_file("idl_health_checktest.html")
+output_file("idl_health_check_status.html")
 save(p)
 
 # Convert the HTML file to PNG using html2image
 hti = Html2Image()
-hti.screenshot(html_file='idl_health_checktest.html', save_as='idl_health_checktest.png')
+hti.screenshot(html_file='idl_health_check_status.html', save_as='idl_health_check_status.png')
 
 # Show the plot
 show(p)
